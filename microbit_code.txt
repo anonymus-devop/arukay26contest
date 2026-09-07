@@ -1,0 +1,15 @@
+// CÓDIGO PARA MAKECODE (JavaScript/Python)
+// Este código debe ir en el editor de MakeCode Micro:bit
+
+basic.forever(function () {
+    // 1. Leer sensores
+    let humedad = pins.analogReadPin(AnalogPin.P0)
+    let temp = input.temperature()
+    let luz = input.lightLevel()
+    
+    // 2. Enviar por puerto serial en formato CSV
+    serial.writeLine(humedad + "," + temp + "," + luz)
+    
+    // 3. Esperar 5 segundos antes de la siguiente lectura
+    basic.pause(5000)
+})
