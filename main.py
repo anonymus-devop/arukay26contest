@@ -38,9 +38,9 @@ def analizar_huerto():
         prompt = (
             f'Eres un experto botánico y asistente de jardinería muy amable. '
             f'Analiza los siguientes datos de sensores de un huerto inteligente:\n'
-            f'- Humedad del suelo: {sensor_data.get(\'humidity\', \'N/A\')}%\n'
-            f'- Temperatura: {sensor_data.get(\'temperature\', \'N/A\')}°C\n'
-            f'- Luz: {sensor_data.get(\'light\', \'N/A\')} lux\n\n'
+            f'- Humedad del suelo: {sensor_data.get('humidity', 'N/A')}%\n'
+            f'- Temperatura: {sensor_data.get('temperature', 'N/A')}°C\n'
+            f'- Luz: {sensor_data.get('light', 'N/A')} lux\n\n'
             f'Dime de forma breve, humana y cercana si el huerto está OK o si el usuario debe hacer algo '
             f'(como regar o mover la planta al sol). No uses lenguaje técnico aburrido.'
         )
