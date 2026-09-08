@@ -11,32 +11,51 @@ CORS(app)
 
 FIREBASE_DB_URL = 'https://arukaycontest26-default-rtdb.firebaseio.com'
 
-# Inicialización de Firebase
-try:
-    if not firebase_admin._apps:
-        service_account_json = os.environ.get('FIREBASE_SERVICE_ACCOUNT_JSON')
-        if not service_account_json:
-            raise ValueError('La variable de entorno FIREBASE_SERVICE_ACCOUNT_JSON no está configurada')
-        
-        cred_dict = json.loads(service_account_json)
-        cred = credentials.Certificate(cred_dict)
-        firebase_admin.initialize_app(cred, {'databaseURL': FIREBASE_DB_URL})
-        print('✅ Firebase inicializado correctamente')
-    else:
-        print('✅ Firebase ya estaba inicializado')
-except Exception as e:
-    print(f'❌ ERROR CRÍTICO: No se pudo inicializar Firebase: {e}')
+def init_firebase():
+    try:
+        # Verificar si ya hay una app inicializada
+        if not firebase_admin._apps:
+            print('Intentando inicializar Firebase...')
+            service_account_json = os.environ.get('FIREBASE_SERVICE_ACCOUNT_JSON')
+            if not service_account_json:
+                print('❌ Error: FIREBASE_SERVICE_ACCOUNT_JSON no configurada')
+                return False
+            
+            cred_dict = json.loads(service_account_json)
+            cred = credentials.Certificate(cred_dict)
+            firebase_admin.initialize_app(cred, {'databaseURL': FIREBASE_DB_URL})
+            print('✅ Firebase inicializado correctamente')
+            return True
+        else:
+            print('✅ Firebase ya estaba inicializado')
+            return True
+    except Exception as e:
+        print(f'❌ ERROR CRÍTICO al inicializar Firebase: {e}')
+        return False
+
+# Inicializar al arrancar
+firebase_initialized = init_firebase()
 
 # Cliente de OpenAI
 client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
 
 @app.route('/health', methods=['GET'])
 def health():
-    return jsonify({'status': 'online', 'message': 'Botánico AI activo'}), 200
+    status = 'online' if firebase_initialized else 'firebase_error'
+    return jsonify({
+        'status': status, 
+        'message': 'Botánico AI activo' if firebase_initialized else 'Error de Firebase',
+        'firebase_initialized': firebase_initialized
+    }), 200
 
 @app.route('/analizar', methods=['GET'])
 def analizar_huerto():
     try:
+        # Intentar inicializar si falló al inicio o no existe
+        if not firebase_admin._apps:
+            if not init_firebase():
+                return jsonify({'error': 'Firebase no está inicializado. Revisa los logs del servidor.'}), 500
+
         # Referencia a la base de datos en tiempo real
         ref = db.reference('/sensors')
         sensor_data = ref.get()
