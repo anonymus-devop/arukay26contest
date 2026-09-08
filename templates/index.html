@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Huerto AI · Botánico inteligente</title>
+  <title>GAIrden · Jardín inteligente</title>
   <style>
     :root { --ink:#17352a; --muted:#6b8077; --cream:#f5f7ef; --card:#fff; --green:#2d8a63; --lime:#b8dc72; --orange:#ef9c58; --line:#e2eadf; }
     * { box-sizing:border-box; }
@@ -16,6 +16,7 @@
     h1,h2,p { margin-top:0; } h1 { margin-bottom:0; font-size:clamp(27px,4vw,43px); letter-spacing:-.045em; } h2 { margin-bottom:7px; font-size:22px; letter-spacing:-.02em; }
     .subtitle { color:var(--muted); max-width:610px; line-height:1.55; }
     .status-pill { display:flex; align-items:center; gap:8px; padding:10px 14px; border:1px solid var(--line); border-radius:999px; background:#ffffffa8; color:var(--muted); font-size:13px; font-weight:700; white-space:nowrap; }
+    .account { display:flex; align-items:center; gap:8px; } .account a { color:var(--green); font-size:13px; font-weight:800; text-decoration:none; } .account-name { color:var(--muted); font-size:12px; }
     .dot { width:9px; height:9px; border-radius:50%; background:var(--orange); } .online .dot { background:var(--green); box-shadow:0 0 0 4px #2d8a6320; }
     .hero { display:grid; grid-template-columns:1.15fr .85fr; gap:20px; align-items:stretch; }
     .panel { border:1px solid var(--line); border-radius:25px; background:var(--card); box-shadow:0 14px 42px #2446330c; }
@@ -44,12 +45,12 @@
 <body>
   <main class="shell">
     <header>
-      <div class="brand"><div class="logo">🌿</div><div><p class="eyebrow">Huerto AI</p><strong>Tu jardín, más inteligente</strong></div></div>
-      <div id="connection" class="status-pill"><span class="dot"></span><span>Comprobando conexión</span></div>
+      <div class="brand"><div class="logo">🌿</div><div><p class="eyebrow">GAIrden</p><strong>Tu jardín, más inteligente</strong></div></div>
+      <div class="account"><div id="connection" class="status-pill"><span class="dot"></span><span>Comprobando conexión</span></div><span id="account-name" class="account-name"></span><a id="auth-link" href="/login">Entrar con Coki ID</a></div>
     </header>
     <section class="hero">
       <div class="panel hero-copy"><p class="eyebrow">Panel de cultivo</p><h1>Hola, cuidador del huerto.</h1><p class="subtitle">Observa tus sensores en un vistazo y recibe una recomendación sencilla para ayudar a tus plantas a crecer fuertes.</p><div class="actions"><button id="refresh">Actualizar lecturas</button><button id="analyze" class="secondary">Pedir consejo AI</button></div><div class="ai-settings"><select id="provider" aria-label="Proveedor de IA"><option value="openai">ChatGPT / OpenAI</option><option value="gemini">Google Gemini</option></select><input id="api-key" type="password" autocomplete="off" placeholder="API key opcional" aria-label="API key"></div><p class="key-note">Tu clave se usa solo para esta solicitud y no se guarda en el servidor.</p><div class="serial-row"><button id="serial-connect">Conectar Micro:bit</button><input id="device-token" type="password" autocomplete="off" placeholder="Token del dispositivo" aria-label="Token del dispositivo"></div><p id="serial-status" class="serial-status">También puedes usar `python bridge.py` como alternativa.</p></div>
-      <div class="panel advice"><div><span class="badge">Consejo del día</span><h2 id="advice-title">Esperando lecturas…</h2><p id="advice">Conecta el Micro:bit para que Botánico AI pueda cuidar tu huerto contigo.</p></div><small id="advice-source">—</small></div>
+      <div class="panel advice"><div><span class="badge">Consejo del día</span><h2 id="advice-title">Esperando lecturas…</h2><p id="advice">Conecta el Micro:bit para que GAIrden AI pueda cuidar tu huerto contigo.</p></div><small id="advice-source">—</small></div>
     </section>
     <section class="metrics" aria-label="Lecturas de sensores">
       <article class="panel metric"><div class="metric-top"><span>Humedad del suelo</span><span class="metric-icon">💧</span></div><div id="humidity" class="metric-value skeleton">—</div><div class="metric-note">Lectura analógica Micro:bit</div></article>
@@ -63,7 +64,7 @@
   <script>
     const $ = (id) => document.getElementById(id);
     const setConnection = (online, label) => { $('connection').classList.toggle('online', online); $('connection').lastElementChild.textContent = label; };
-    const setAdvice = (text, source) => { $('advice').textContent = text || 'No hay consejo disponible.'; $('advice-title').textContent = source === 'openai' ? 'Botánico AI recomienda' : 'Consejo de respaldo'; $('advice-source').textContent = source === 'openai' ? 'Generado por OpenAI' : 'Basado en reglas locales'; };
+    const setAdvice = (text, source) => { $('advice').textContent = text || 'No hay consejo disponible.'; $('advice-title').textContent = source === 'openai' || source === 'gemini' ? 'GAIrden AI recomienda' : 'Consejo de respaldo'; $('advice-source').textContent = source === 'openai' ? 'Generado por OpenAI' : source === 'gemini' ? 'Generado por Gemini' : 'Basado en reglas locales'; };
     const formatDate = (value) => { if (!value) return '—'; const date = new Date(value); return Number.isNaN(date.getTime()) ? value : date.toLocaleString('es-CO', { dateStyle:'medium', timeStyle:'short' }); };
     function renderSensors(data) {
       if (!data) { $('empty').classList.add('visible'); $('garden-status').textContent = 'Esperando sensores'; $('garden-copy').textContent = 'Conecta el Micro:bit y ejecuta el puente para comenzar.'; return; }
@@ -76,6 +77,7 @@
       $('garden-copy').textContent = attention ? 'Hay una lectura que conviene revisar en los próximos minutos.' : 'Las condiciones registradas están dentro de un rango tranquilo.';
     }
     async function loadSensors() { $('refresh').disabled = true; setConnection(false, 'Actualizando…'); try { const response = await fetch('/api/sensors'); const payload = await response.json(); renderSensors(payload.data); setConnection(payload.data !== null, payload.data ? 'Firebase conectado' : 'Sin lecturas'); } catch (error) { setConnection(false, 'Sin conexión'); $('empty').textContent = 'No pudimos conectar con el backend. Revisa que el servicio esté activo e inténtalo de nuevo.'; $('empty').classList.add('visible'); } finally { $('refresh').disabled = false; } }
+    async function loadAuth() { try { const response = await fetch('/auth/status'); const payload = await response.json(); if (payload.authenticated) { $('account-name').textContent = payload.user?.name || payload.user?.email || 'Sesión activa'; $('auth-link').textContent = 'Salir'; $('auth-link').href = '/logout'; } } catch (error) { console.warn('No se pudo consultar Coki ID', error); } }
     async function analyze() { $('analyze').disabled = true; $('advice').textContent = 'Analizando tus lecturas…'; const provider = $('provider').value; const apiKey = $('api-key').value.trim(); const headers = { 'X-AI-Provider': provider }; if (apiKey) headers[provider === 'gemini' ? 'X-Gemini-Key' : 'X-OpenAI-Key'] = apiKey; try { const response = await fetch('/analizar', { headers }); const payload = await response.json(); if (!response.ok) throw new Error(payload.error || 'No hay datos'); setAdvice(payload.consejo, payload.source); } catch (error) { setAdvice('Aún no hay suficientes datos para preparar un consejo. Conecta el Micro:bit y vuelve a intentarlo.', 'rules'); } finally { $('analyze').disabled = false; } }
     let serialPort = null; let serialReader = null; let serialBuffer = '';
     async function sendSerialReading(line) { const parts = line.trim().split(',').map(Number); if (parts.length !== 3 || parts.some((value) => !Number.isFinite(value))) return; const token = $('device-token').value.trim(); if (!token) { $('serial-status').textContent = 'Introduce el token del dispositivo antes de conectar.'; return; } const response = await fetch('/api/sensors', { method:'POST', headers:{'Content-Type':'application/json','X-Device-Token':token}, body:JSON.stringify({humidity:parts[0],temperature:parts[1],light:parts[2]}) }); if (!response.ok) throw new Error(response.status === 401 ? 'Token del dispositivo incorrecto.' : 'No se pudo guardar la lectura.'); const payload = await response.json(); renderSensors(payload.data); $('serial-status').textContent = `Lectura recibida: ${line.trim()}`; }
@@ -84,7 +86,7 @@
     function simulatorData() { return { humidity:Number($('sim-humidity').value), temperature:Number($('sim-temperature').value), light:Number($('sim-light').value) }; }
     function updateSimulatorLabels() { $('sim-humidity-value').textContent = $('sim-humidity').value; $('sim-temperature-value').textContent = `${$('sim-temperature').value} °C`; $('sim-light-value').textContent = $('sim-light').value; }
     async function simulate() { const data = simulatorData(); updateSimulatorLabels(); $('simulate').disabled = true; try { const provider = $('provider').value; const apiKey = $('api-key').value.trim(); const headers = {'Content-Type':'application/json','X-AI-Provider':provider}; if (apiKey) headers[provider === 'gemini' ? 'X-Gemini-Key' : 'X-OpenAI-Key'] = apiKey; const response = await fetch('/analizar', {method:'POST', headers, body:JSON.stringify(data)}); const payload = await response.json(); if (!response.ok) throw new Error(payload.error); renderSensors(payload.data); setAdvice(payload.consejo, payload.source); $('serial-status').textContent = 'Lectura simulada procesada. Puedes cambiar los controles y probar otra vez.'; } catch (error) { $('serial-status').textContent = 'No se pudo procesar la simulación.'; } finally { $('simulate').disabled = false; } }
-    $('refresh').addEventListener('click', loadSensors); $('analyze').addEventListener('click', analyze); $('serial-connect').addEventListener('click', () => serialPort ? disconnectSerial() : connectSerial()); ['sim-humidity','sim-temperature','sim-light'].forEach((id) => $(id).addEventListener('input', updateSimulatorLabels)); $('simulate').addEventListener('click', simulate); loadSensors();
+    $('refresh').addEventListener('click', loadSensors); $('analyze').addEventListener('click', analyze); $('serial-connect').addEventListener('click', () => serialPort ? disconnectSerial() : connectSerial()); ['sim-humidity','sim-temperature','sim-light'].forEach((id) => $(id).addEventListener('input', updateSimulatorLabels)); $('simulate').addEventListener('click', simulate); loadAuth(); loadSensors();
   </script>
 </body>
 </html>

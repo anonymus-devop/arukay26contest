@@ -1,6 +1,7 @@
 import json
 import os
 import hmac
+import secrets
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -8,17 +9,30 @@ from datetime import datetime, timezone
 
 import firebase_admin
 from firebase_admin import credentials, db
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, redirect, render_template, request, session, url_for
 from flask_cors import CORS
 from openai import OpenAI
 
 app = Flask(__name__)
 CORS(app)
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-only-change-this-secret")
 
 FIREBASE_DB_URL = os.getenv(
     "FIREBASE_DB_URL", "https://arukaycontest26-default-rtdb.firebaseio.com"
 )
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+CS_ID_AUTHORIZE_URL = os.getenv(
+    "CS_ID_AUTHORIZE_URL",
+    "https://cmkumxprmmhuinxfppxl.supabase.co/auth/v1/oauth/authorize",
+)
+CS_ID_TOKEN_URL = os.getenv(
+    "CS_ID_TOKEN_URL",
+    "https://cmkumxprmmhuinxfppxl.supabase.co/auth/v1/oauth/token",
+)
+CS_ID_DISCOVERY_URL = os.getenv(
+    "CS_ID_DISCOVERY_URL",
+    "https://cmkumxprmmhuinxfppxl.supabase.co/auth/v1/.well-known/openid-configuration",
+)
 firebase_initialized = False
 
 
@@ -123,7 +137,7 @@ def rule_based_advice(sensor_data):
 def openai_advice(sensor_data, api_key):
     client = OpenAI(api_key=api_key)
     prompt = (
-        "Eres el Botánico AI de un huerto escolar. Da un consejo breve, cálido y accionable "
+        "Eres GAIrden AI, el asistente de un huerto escolar. Da un consejo breve, cálido y accionable "
         "en español, sin tecnicismos. La humedad es una lectura analógica Micro:bit (0-1023), "
         "la temperatura está en °C y la luz es el nivel del Micro:bit.\n\n"
         f"Humedad: {sensor_data['humidity']}\n"
@@ -142,7 +156,7 @@ def openai_advice(sensor_data, api_key):
 def gemini_advice(sensor_data, api_key):
     model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
     prompt = (
-        "Eres el Botánico AI de un huerto escolar. Da un consejo breve, cálido y accionable "
+        "Eres GAIrden AI, el asistente de un huerto escolar. Da un consejo breve, cálido y accionable "
         "en español, sin tecnicismos. La humedad es una lectura analógica Micro:bit (0-1023), "
         "la temperatura está en °C y la luz es el nivel del Micro:bit.\n\n"
         f"Humedad: {sensor_data['humidity']}\n"
@@ -189,6 +203,107 @@ def generate_advice(sensor_data, provider=None, user_api_key=None):
     return rule_based_advice(sensor_data), "rules", f"{provider} no devolvió contenido"
 
 
+def cs_id_redirect_uri():
+    return os.getenv("CS_ID_REDIRECT_URI") or url_for("oauth_callback", _external=True)
+
+
+def fetch_json(url, request_data=None, headers=None):
+    request = urllib.request.Request(
+        url,
+        data=request_data,
+        headers=headers or {},
+        method="POST" if request_data is not None else "GET",
+    )
+    with urllib.request.urlopen(request, timeout=15) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+@app.route("/login", methods=["GET"])
+def login():
+    client_id = os.getenv("CS_ID_CLIENT_ID")
+    if not client_id or not os.getenv("CS_ID_CLIENT_SECRET"):
+        return jsonify({
+            "status": "error",
+            "error": "Coki Studios ID no está configurado en Render",
+        }), 503
+
+    state = secrets.token_urlsafe(32)
+    session["cs_oauth_state"] = state
+    query = urllib.parse.urlencode({
+        "client_id": client_id,
+        "redirect_uri": cs_id_redirect_uri(),
+        "response_type": "code",
+        "scope": "openid profile email",
+        "state": state,
+    })
+    return redirect(f"{CS_ID_AUTHORIZE_URL}?{query}")
+
+
+@app.route("/callback", methods=["GET"])
+def oauth_callback():
+    error = request.args.get("error")
+    if error:
+        return redirect("/?auth_error=" + urllib.parse.quote(error))
+
+    state = request.args.get("state", "")
+    expected_state = session.pop("cs_oauth_state", "")
+    if not expected_state or not hmac.compare_digest(state, expected_state):
+        return jsonify({"status": "error", "error": "invalid_oauth_state"}), 400
+
+    code = request.args.get("code")
+    if not code:
+        return jsonify({"status": "error", "error": "missing_authorization_code"}), 400
+
+    form = urllib.parse.urlencode({
+        "grant_type": "authorization_code",
+        "client_id": os.getenv("CS_ID_CLIENT_ID", ""),
+        "client_secret": os.getenv("CS_ID_CLIENT_SECRET", ""),
+        "code": code,
+        "redirect_uri": cs_id_redirect_uri(),
+    }).encode("utf-8")
+    try:
+        token_data = fetch_json(
+            CS_ID_TOKEN_URL,
+            request_data=form,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        access_token = token_data.get("access_token")
+        if not access_token:
+            raise ValueError("token response did not include access_token")
+
+        # Discovery keeps the integration compatible with the official OIDC server.
+        discovery = fetch_json(CS_ID_DISCOVERY_URL)
+        userinfo_url = discovery.get("userinfo_endpoint")
+        user = {}
+        if userinfo_url:
+            user = fetch_json(
+                userinfo_url,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+        session["cs_user"] = {
+            "id": user.get("sub"),
+            "name": user.get("name") or user.get("preferred_username"),
+            "email": user.get("email"),
+            "picture": user.get("picture"),
+        }
+        return redirect("/")
+    except (urllib.error.HTTPError, urllib.error.URLError, KeyError, ValueError) as exc:
+        print(f"Coki Studios ID OAuth error: {exc}")
+        return redirect("/?auth_error=oauth_failed")
+
+
+@app.route("/auth/status", methods=["GET"])
+def auth_status():
+    user = session.get("cs_user")
+    return jsonify({"authenticated": bool(user), "user": user})
+
+
+@app.route("/logout", methods=["GET"])
+def logout():
+    session.pop("cs_user", None)
+    return redirect("/")
+
+
 @app.route("/", methods=["GET"])
 def home():
     return render_template("index.html")
@@ -199,7 +314,7 @@ def health():
     firebase_ok = init_firebase()
     return jsonify({
         "status": "online" if firebase_ok else "degraded",
-        "message": "Botánico AI activo" if firebase_ok else "Firebase requiere configuración",
+        "message": "GAIrden AI activo" if firebase_ok else "Firebase requiere configuración",
         "firebase_initialized": firebase_ok,
         "openai_configured": bool(os.getenv("OPENAI_API_KEY")),
     }), 200

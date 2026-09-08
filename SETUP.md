@@ -1,4 +1,4 @@
-# Guía de instalación de Huerto AI
+# Guía de instalación de GAIrden
 
 ## Firebase
 
@@ -35,6 +35,17 @@ Abre `http://localhost:5000/` y prueba también `/health`, `/api/sensors` y `/an
 - Start: `gunicorn main:app`
 
 Variables requeridas: `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_DB_URL` y `DEVICE_INGEST_TOKEN`. `OPENAI_API_KEY` y `GEMINI_API_KEY` son opcionales porque el usuario también puede proporcionar una clave desde el dashboard. Las claves introducidas en la interfaz solo se usan para la solicitud actual y no se almacenan.
+
+## Coki Studios ID OAuth 2.1 / OIDC
+
+Configura en Render:
+
+- `CS_ID_CLIENT_ID`
+- `CS_ID_CLIENT_SECRET` (solo backend)
+- `CS_ID_REDIRECT_URI=https://arukay26contest.onrender.com/callback`
+- `FLASK_SECRET_KEY` (secreto aleatorio largo)
+
+GAIrden usa el authorization endpoint, token endpoint y metadata OIDC oficiales de Coki Studios ID. El secreto nunca se envía al navegador. Registra exactamente la URL `/callback` como redirect URI permitida en Coki Studios ID.
 
 ## Web Serial
 
