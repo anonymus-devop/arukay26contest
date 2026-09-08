@@ -34,7 +34,7 @@ Variables disponibles:
 - `SERIAL_PORT`: puerto del Micro:bit, por defecto `COM3`.
 - `FLASK_SECRET_KEY`: secreto para firmar la sesión web.
 - `CS_ID_CLIENT_ID`: client ID de Coki Studios ID.
-- `CS_ID_CLIENT_SECRET`: secreto OAuth de Coki Studios ID, solo en Render.
+- `CS_ID_CLIENT_SECRET`: opcional; solo para clientes OAuth confidenciales.
 - `CS_ID_REDIRECT_URI`: URL exacta de callback, por ejemplo `https://arukay26contest.onrender.com/callback`.
 
 ## Formato del Micro:bit
@@ -71,4 +71,4 @@ Para visitantes sin hardware hay un mini simulador de Micro:bit en la página. S
 
 ## Render
 
-Usa `gunicorn main:app` como comando de inicio y configura `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_DB_URL`, `FLASK_SECRET_KEY`, `CS_ID_CLIENT_ID`, `CS_ID_CLIENT_SECRET` y `CS_ID_REDIRECT_URI`. `OPENAI_API_KEY` y `GEMINI_API_KEY` son opcionales. Nunca subas credenciales al repositorio.
+Usa `gunicorn main:app` como comando de inicio y configura `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_DB_URL`, `FLASK_SECRET_KEY`, `CS_ID_CLIENT_ID` y `CS_ID_REDIRECT_URI`. `CS_ID_CLIENT_SECRET` solo es necesario para clientes confidenciales. `OPENAI_API_KEY` y `GEMINI_API_KEY` son opcionales. Nunca subas credenciales al repositorio.

@@ -1,6 +1,8 @@
 import json
 import os
 import hmac
+import base64
+import hashlib
 import secrets
 import urllib.error
 import urllib.parse
@@ -221,20 +223,27 @@ def fetch_json(url, request_data=None, headers=None):
 @app.route("/login", methods=["GET"])
 def login():
     client_id = os.getenv("CS_ID_CLIENT_ID")
-    if not client_id or not os.getenv("CS_ID_CLIENT_SECRET"):
+    if not client_id:
         return jsonify({
             "status": "error",
             "error": "Coki Studios ID no está configurado en Render",
         }), 503
 
     state = secrets.token_urlsafe(32)
+    code_verifier = secrets.token_urlsafe(64)
+    code_challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(code_verifier.encode("ascii")).digest()
+    ).rstrip(b"=").decode("ascii")
     session["cs_oauth_state"] = state
+    session["cs_oauth_verifier"] = code_verifier
     query = urllib.parse.urlencode({
         "client_id": client_id,
         "redirect_uri": cs_id_redirect_uri(),
         "response_type": "code",
         "scope": "openid profile email",
         "state": state,
+        "code_challenge": code_challenge,
+        "code_challenge_method": "S256",
     })
     return redirect(f"{CS_ID_AUTHORIZE_URL}?{query}")
 
@@ -247,6 +256,7 @@ def oauth_callback():
 
     state = request.args.get("state", "")
     expected_state = session.pop("cs_oauth_state", "")
+    code_verifier = session.pop("cs_oauth_verifier", "")
     if not expected_state or not hmac.compare_digest(state, expected_state):
         return jsonify({"status": "error", "error": "invalid_oauth_state"}), 400
 
@@ -254,13 +264,17 @@ def oauth_callback():
     if not code:
         return jsonify({"status": "error", "error": "missing_authorization_code"}), 400
 
-    form = urllib.parse.urlencode({
+    form_values = {
         "grant_type": "authorization_code",
         "client_id": os.getenv("CS_ID_CLIENT_ID", ""),
-        "client_secret": os.getenv("CS_ID_CLIENT_SECRET", ""),
         "code": code,
         "redirect_uri": cs_id_redirect_uri(),
-    }).encode("utf-8")
+        "code_verifier": code_verifier,
+    }
+    # Confidential clients may optionally provide a secret; public clients use PKCE only.
+    if os.getenv("CS_ID_CLIENT_SECRET"):
+        form_values["client_secret"] = os.getenv("CS_ID_CLIENT_SECRET")
+    form = urllib.parse.urlencode(form_values).encode("utf-8")
     try:
         token_data = fetch_json(
             CS_ID_TOKEN_URL,
