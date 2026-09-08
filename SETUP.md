@@ -34,4 +34,4 @@ Abre `http://localhost:5000/` y prueba también `/health`, `/api/sensors` y `/an
 - Build: `pip install -r requirements.txt`
 - Start: `gunicorn main:app`
 
-Variables requeridas: `FIREBASE_SERVICE_ACCOUNT_JSON` y `FIREBASE_DB_URL`. `OPENAI_API_KEY` es opcional porque existe un modo local de respaldo.
+Variables requeridas: `FIREBASE_SERVICE_ACCOUNT_JSON` y `FIREBASE_DB_URL`. `OPENAI_API_KEY` y `GEMINI_API_KEY` son opcionales porque el usuario también puede proporcionar una clave desde el dashboard. Las claves introducidas en la interfaz solo se usan para la solicitud actual y no se almacenan.

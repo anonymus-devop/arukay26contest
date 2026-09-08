@@ -27,7 +27,9 @@ Variables disponibles:
 - `FIREBASE_SERVICE_ACCOUNT_FILE`: ruta local al JSON para `bridge.py`.
 - `FIREBASE_DB_URL`: URL de Firebase Realtime Database.
 - `OPENAI_API_KEY`: opcional; sin ella se usa un consejo local por reglas.
+- `GEMINI_API_KEY`: opcional; permite usar Gemini como proveedor predeterminado cuando no hay clave de OpenAI.
 - `OPENAI_MODEL`: opcional, por defecto `gpt-4o-mini`.
+- `GEMINI_MODEL`: opcional, por defecto `gemini-2.0-flash`.
 - `SERIAL_PORT`: puerto del Micro:bit, por defecto `COM3`.
 
 ## Formato del Micro:bit
@@ -52,6 +54,8 @@ Firebase guarda:
 - `/analizar`: datos y consejo del Botánico AI.
 
 Si OpenAI no está configurado o falla, `/analizar` devuelve un consejo local basado en umbrales.
+
+En el dashboard el usuario puede seleccionar ChatGPT/OpenAI o Google Gemini y pegar una API key para esa solicitud. La clave se envía en un header HTTPS, no se guarda en Firebase, no se escribe en logs y no se persiste en el servidor.
 
 ## Render
 

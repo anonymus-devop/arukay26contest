@@ -1,5 +1,8 @@
 import json
 import os
+import urllib.error
+import urllib.parse
+import urllib.request
 from datetime import datetime, timezone
 
 import firebase_admin
@@ -116,33 +119,73 @@ def rule_based_advice(sensor_data):
     return "Te recomiendo " + " y ".join(actions) + "."
 
 
-def generate_advice(sensor_data):
-    api_key = os.getenv("OPENAI_API_KEY")
+def openai_advice(sensor_data, api_key):
+    client = OpenAI(api_key=api_key)
+    prompt = (
+        "Eres el Botánico AI de un huerto escolar. Da un consejo breve, cálido y accionable "
+        "en español, sin tecnicismos. La humedad es una lectura analógica Micro:bit (0-1023), "
+        "la temperatura está en °C y la luz es el nivel del Micro:bit.\n\n"
+        f"Humedad: {sensor_data['humidity']}\n"
+        f"Temperatura: {sensor_data['temperature']} °C\n"
+        f"Luz: {sensor_data['light']}\n"
+    )
+    response = client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.7,
+        max_tokens=120,
+    )
+    return response.choices[0].message.content
+
+
+def gemini_advice(sensor_data, api_key):
+    model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+    prompt = (
+        "Eres el Botánico AI de un huerto escolar. Da un consejo breve, cálido y accionable "
+        "en español, sin tecnicismos. La humedad es una lectura analógica Micro:bit (0-1023), "
+        "la temperatura está en °C y la luz es el nivel del Micro:bit.\n\n"
+        f"Humedad: {sensor_data['humidity']}\n"
+        f"Temperatura: {sensor_data['temperature']} °C\n"
+        f"Luz: {sensor_data['light']}\n"
+    )
+    payload = json.dumps({"contents": [{"parts": [{"text": prompt}]}]}).encode("utf-8")
+    url = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{model}:generateContent?key={urllib.parse.quote(api_key)}"
+    )
+    request = urllib.request.Request(
+        url,
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=25) as response:
+        result = json.loads(response.read().decode("utf-8"))
+    return result["candidates"][0]["content"]["parts"][0]["text"]
+
+
+def generate_advice(sensor_data, provider=None, user_api_key=None):
+    provider = (provider or "").lower().strip()
+    if provider not in {"openai", "gemini"}:
+        provider = "openai" if os.getenv("OPENAI_API_KEY") else "gemini"
+
+    api_key = user_api_key or (
+        os.getenv("OPENAI_API_KEY") if provider == "openai" else os.getenv("GEMINI_API_KEY")
+    )
     if not api_key:
-        return rule_based_advice(sensor_data), "rules", "OPENAI_API_KEY no configurada"
+        return rule_based_advice(sensor_data), "rules", f"No hay clave configurada para {provider}"
+
     try:
-        client = OpenAI(api_key=api_key)
-        prompt = (
-            "Eres el Botánico AI de un huerto escolar. Da un consejo breve, cálido y accionable "
-            "en español, sin tecnicismos. La humedad es una lectura analógica Micro:bit (0-1023), "
-            "la temperatura está en °C y la luz es el nivel del Micro:bit.\n\n"
-            f"Humedad: {sensor_data['humidity']}\n"
-            f"Temperatura: {sensor_data['temperature']} °C\n"
-            f"Luz: {sensor_data['light']}\n"
-        )
-        response = client.chat.completions.create(
-            model=OPENAI_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
-            max_tokens=120,
-        )
-        advice = response.choices[0].message.content
+        advice = openai_advice(sensor_data, api_key) if provider == "openai" else gemini_advice(sensor_data, api_key)
         if advice:
-            return advice.strip(), "openai", None
+            return advice.strip(), provider, None
+    except (urllib.error.URLError, urllib.error.HTTPError, KeyError, IndexError, ValueError) as error:
+        print(f"{provider} no disponible; se usará consejo local: {error}")
+        return rule_based_advice(sensor_data), "rules", f"{provider} no disponible"
     except Exception as error:
-        print(f"OpenAI no disponible; se usará consejo local: {error}")
-        return rule_based_advice(sensor_data), "rules", "OpenAI no disponible"
-    return rule_based_advice(sensor_data), "rules", "OpenAI no devolvió contenido"
+        print(f"{provider} no disponible; se usará consejo local: {error}")
+        return rule_based_advice(sensor_data), "rules", f"{provider} no disponible"
+    return rule_based_advice(sensor_data), "rules", f"{provider} no devolvió contenido"
 
 
 @app.route("/", methods=["GET"])
@@ -175,7 +218,12 @@ def analizar_huerto():
     if sensor_data is None:
         status_code = 503 if error == "firebase_unavailable" else 404
         return jsonify({"status": "no_data", "error": error}), status_code
-    advice, source, warning = generate_advice(sensor_data)
+    provider = request.headers.get("X-AI-Provider") or request.args.get("provider")
+    if (provider or "").lower() == "gemini":
+        user_api_key = request.headers.get("X-Gemini-Key")
+    else:
+        user_api_key = request.headers.get("X-OpenAI-Key")
+    advice, source, warning = generate_advice(sensor_data, provider, user_api_key)
     response = {
         "status": "success",
         "data": sensor_data,

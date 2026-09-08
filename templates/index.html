@@ -23,6 +23,9 @@
     .hero-copy:after { content:'🌱'; position:absolute; right:25px; bottom:-15px; font-size:110px; opacity:.12; transform:rotate(-10deg); }
     .hero-copy .subtitle { position:relative; z-index:1; }
     .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:23px; position:relative; z-index:1; }
+    .ai-settings { display:grid; grid-template-columns:145px 1fr; gap:9px; margin-top:18px; position:relative; z-index:1; }
+    .ai-settings select,.ai-settings input { min-width:0; border:1px solid var(--line); border-radius:11px; padding:11px 12px; color:var(--ink); background:#ffffffd9; font:inherit; }
+    .key-note { margin:8px 0 0; color:var(--muted); font-size:11px; position:relative; z-index:1; }
     button { border:0; border-radius:12px; padding:12px 17px; color:white; background:var(--green); font:inherit; font-weight:800; cursor:pointer; transition:transform .15s,box-shadow .15s; box-shadow:0 7px 14px #2d8a6330; } button:hover { transform:translateY(-2px); box-shadow:0 10px 19px #2d8a6340; } button:disabled { opacity:.65; cursor:wait; transform:none; }
     button.secondary { color:var(--ink); background:#edf5e8; box-shadow:none; }
     .advice { display:flex; flex-direction:column; justify-content:space-between; padding:27px; background:var(--ink); color:white; } .advice h2 { color:white; } .advice p { color:#d3e5d8; line-height:1.65; font-size:17px; margin:18px 0 0; } .advice small { color:#9fc2aa; }
@@ -41,7 +44,7 @@
       <div id="connection" class="status-pill"><span class="dot"></span><span>Comprobando conexión</span></div>
     </header>
     <section class="hero">
-      <div class="panel hero-copy"><p class="eyebrow">Panel de cultivo</p><h1>Hola, cuidador del huerto.</h1><p class="subtitle">Observa tus sensores en un vistazo y recibe una recomendación sencilla para ayudar a tus plantas a crecer fuertes.</p><div class="actions"><button id="refresh">Actualizar lecturas</button><button id="analyze" class="secondary">Pedir consejo AI</button></div></div>
+      <div class="panel hero-copy"><p class="eyebrow">Panel de cultivo</p><h1>Hola, cuidador del huerto.</h1><p class="subtitle">Observa tus sensores en un vistazo y recibe una recomendación sencilla para ayudar a tus plantas a crecer fuertes.</p><div class="actions"><button id="refresh">Actualizar lecturas</button><button id="analyze" class="secondary">Pedir consejo AI</button></div><div class="ai-settings"><select id="provider" aria-label="Proveedor de IA"><option value="openai">ChatGPT / OpenAI</option><option value="gemini">Google Gemini</option></select><input id="api-key" type="password" autocomplete="off" placeholder="API key opcional" aria-label="API key"></div><p class="key-note">Tu clave se usa solo para esta solicitud y no se guarda en el servidor.</p></div>
       <div class="panel advice"><div><span class="badge">Consejo del día</span><h2 id="advice-title">Esperando lecturas…</h2><p id="advice">Conecta el Micro:bit para que Botánico AI pueda cuidar tu huerto contigo.</p></div><small id="advice-source">—</small></div>
     </section>
     <section class="metrics" aria-label="Lecturas de sensores">
@@ -68,7 +71,7 @@
       $('garden-copy').textContent = attention ? 'Hay una lectura que conviene revisar en los próximos minutos.' : 'Las condiciones registradas están dentro de un rango tranquilo.';
     }
     async function loadSensors() { $('refresh').disabled = true; setConnection(false, 'Actualizando…'); try { const response = await fetch('/api/sensors'); const payload = await response.json(); renderSensors(payload.data); setConnection(payload.data !== null, payload.data ? 'Firebase conectado' : 'Sin lecturas'); } catch (error) { setConnection(false, 'Sin conexión'); $('empty').textContent = 'No pudimos conectar con el backend. Revisa que el servicio esté activo e inténtalo de nuevo.'; $('empty').classList.add('visible'); } finally { $('refresh').disabled = false; } }
-    async function analyze() { $('analyze').disabled = true; $('advice').textContent = 'Analizando tus lecturas…'; try { const response = await fetch('/analizar'); const payload = await response.json(); if (!response.ok) throw new Error(payload.error || 'No hay datos'); setAdvice(payload.consejo, payload.source); } catch (error) { setAdvice('Aún no hay suficientes datos para preparar un consejo. Conecta el Micro:bit y vuelve a intentarlo.', 'rules'); } finally { $('analyze').disabled = false; } }
+    async function analyze() { $('analyze').disabled = true; $('advice').textContent = 'Analizando tus lecturas…'; const provider = $('provider').value; const apiKey = $('api-key').value.trim(); const headers = { 'X-AI-Provider': provider }; if (apiKey) headers[provider === 'gemini' ? 'X-Gemini-Key' : 'X-OpenAI-Key'] = apiKey; try { const response = await fetch('/analizar', { headers }); const payload = await response.json(); if (!response.ok) throw new Error(payload.error || 'No hay datos'); setAdvice(payload.consejo, payload.source); } catch (error) { setAdvice('Aún no hay suficientes datos para preparar un consejo. Conecta el Micro:bit y vuelve a intentarlo.', 'rules'); } finally { $('analyze').disabled = false; } }
     $('refresh').addEventListener('click', loadSensors); $('analyze').addEventListener('click', analyze); loadSensors();
   </script>
 </body>
