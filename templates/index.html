@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Huerto AI · Botánico inteligente</title>
+  <style>
+    :root { --ink:#17352a; --muted:#6b8077; --cream:#f5f7ef; --card:#fff; --green:#2d8a63; --lime:#b8dc72; --orange:#ef9c58; --line:#e2eadf; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:radial-gradient(circle at 90% 0,#dceec4 0,transparent 28%),var(--cream); font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif; }
+    .shell { width:min(1120px,calc(100% - 36px)); margin:0 auto; padding:32px 0 48px; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:20px; margin-bottom:34px; }
+    .brand { display:flex; align-items:center; gap:13px; }
+    .logo { display:grid; place-items:center; width:46px; height:46px; border-radius:15px; color:white; background:var(--green); font-size:25px; box-shadow:0 9px 22px #2d8a6338; }
+    .eyebrow { margin:0 0 4px; color:var(--green); font-size:12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
+    h1,h2,p { margin-top:0; } h1 { margin-bottom:0; font-size:clamp(27px,4vw,43px); letter-spacing:-.045em; } h2 { margin-bottom:7px; font-size:22px; letter-spacing:-.02em; }
+    .subtitle { color:var(--muted); max-width:610px; line-height:1.55; }
+    .status-pill { display:flex; align-items:center; gap:8px; padding:10px 14px; border:1px solid var(--line); border-radius:999px; background:#ffffffa8; color:var(--muted); font-size:13px; font-weight:700; white-space:nowrap; }
+    .dot { width:9px; height:9px; border-radius:50%; background:var(--orange); } .online .dot { background:var(--green); box-shadow:0 0 0 4px #2d8a6320; }
+    .hero { display:grid; grid-template-columns:1.15fr .85fr; gap:20px; align-items:stretch; }
+    .panel { border:1px solid var(--line); border-radius:25px; background:var(--card); box-shadow:0 14px 42px #2446330c; }
+    .hero-copy { padding:31px; background:linear-gradient(135deg,#e8f5d8,#fff); overflow:hidden; position:relative; }
+    .hero-copy:after { content:'🌱'; position:absolute; right:25px; bottom:-15px; font-size:110px; opacity:.12; transform:rotate(-10deg); }
+    .hero-copy .subtitle { position:relative; z-index:1; }
+    .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:23px; position:relative; z-index:1; }
+    button { border:0; border-radius:12px; padding:12px 17px; color:white; background:var(--green); font:inherit; font-weight:800; cursor:pointer; transition:transform .15s,box-shadow .15s; box-shadow:0 7px 14px #2d8a6330; } button:hover { transform:translateY(-2px); box-shadow:0 10px 19px #2d8a6340; } button:disabled { opacity:.65; cursor:wait; transform:none; }
+    button.secondary { color:var(--ink); background:#edf5e8; box-shadow:none; }
+    .advice { display:flex; flex-direction:column; justify-content:space-between; padding:27px; background:var(--ink); color:white; } .advice h2 { color:white; } .advice p { color:#d3e5d8; line-height:1.65; font-size:17px; margin:18px 0 0; } .advice small { color:#9fc2aa; }
+    .badge { display:inline-flex; padding:7px 10px; border-radius:999px; color:var(--ink); background:var(--lime); font-size:11px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+    .metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin:20px 0; } .metric { padding:22px; } .metric-top { display:flex; align-items:center; justify-content:space-between; color:var(--muted); font-size:13px; font-weight:800; } .metric-icon { font-size:24px; } .metric-value { margin:16px 0 3px; font-size:34px; font-weight:850; letter-spacing:-.06em; } .metric-note { color:var(--muted); font-size:12px; }
+    .bottom { display:grid; grid-template-columns:1fr 1fr; gap:16px; } .info { padding:24px; } .info p { color:var(--muted); line-height:1.6; margin-bottom:0; } .last-read { color:var(--muted); font-size:13px; }
+    .empty { display:none; padding:17px; border-radius:14px; background:#fff3e7; color:#87552e; line-height:1.5; } .empty.visible { display:block; }
+    .error { color:#a63e38; } .skeleton { color:var(--muted); }
+    @media (max-width:780px) { .shell { width:min(100% - 24px,560px); padding-top:22px; } header { align-items:flex-start; flex-direction:column; margin-bottom:24px; } .hero,.bottom { grid-template-columns:1fr; } .metrics { gap:9px; } .metric { padding:16px 13px; } .metric-value { font-size:26px; } .metric-note { font-size:11px; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div class="brand"><div class="logo">🌿</div><div><p class="eyebrow">Huerto AI</p><strong>Tu jardín, más inteligente</strong></div></div>
+      <div id="connection" class="status-pill"><span class="dot"></span><span>Comprobando conexión</span></div>
+    </header>
+    <section class="hero">
+      <div class="panel hero-copy"><p class="eyebrow">Panel de cultivo</p><h1>Hola, cuidador del huerto.</h1><p class="subtitle">Observa tus sensores en un vistazo y recibe una recomendación sencilla para ayudar a tus plantas a crecer fuertes.</p><div class="actions"><button id="refresh">Actualizar lecturas</button><button id="analyze" class="secondary">Pedir consejo AI</button></div></div>
+      <div class="panel advice"><div><span class="badge">Consejo del día</span><h2 id="advice-title">Esperando lecturas…</h2><p id="advice">Conecta el Micro:bit para que Botánico AI pueda cuidar tu huerto contigo.</p></div><small id="advice-source">—</small></div>
+    </section>
+    <section class="metrics" aria-label="Lecturas de sensores">
+      <article class="panel metric"><div class="metric-top"><span>Humedad del suelo</span><span class="metric-icon">💧</span></div><div id="humidity" class="metric-value skeleton">—</div><div class="metric-note">Lectura analógica Micro:bit</div></article>
+      <article class="panel metric"><div class="metric-top"><span>Temperatura</span><span class="metric-icon">☀️</span></div><div id="temperature" class="metric-value skeleton">—</div><div class="metric-note">Grados Celsius</div></article>
+      <article class="panel metric"><div class="metric-top"><span>Nivel de luz</span><span class="metric-icon">🌤️</span></div><div id="light" class="metric-value skeleton">—</div><div class="metric-note">Nivel del sensor Micro:bit</div></article>
+    </section>
+    <div id="empty" class="empty">Todavía no hay lecturas. Enciende el puente local con <code>python bridge.py</code> y verifica que el Micro:bit esté enviando líneas con el formato <code>humedad,temperatura,luz</code>.</div>
+    <section class="bottom" style="margin-top:16px"><article class="panel info"><p class="eyebrow">Estado del huerto</p><h2 id="garden-status">Sin datos todavía</h2><p id="garden-copy">Cuando llegue una lectura podremos evaluar si tus plantas están cómodas.</p></article><article class="panel info"><p class="eyebrow">Última lectura</p><h2 id="last-read">—</h2><p class="last-read">Los datos se actualizan desde Firebase Realtime Database.</p></article></section>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const setConnection = (online, label) => { $('connection').classList.toggle('online', online); $('connection').lastElementChild.textContent = label; };
+    const setAdvice = (text, source) => { $('advice').textContent = text || 'No hay consejo disponible.'; $('advice-title').textContent = source === 'openai' ? 'Botánico AI recomienda' : 'Consejo de respaldo'; $('advice-source').textContent = source === 'openai' ? 'Generado por OpenAI' : 'Basado en reglas locales'; };
+    const formatDate = (value) => { if (!value) return '—'; const date = new Date(value); return Number.isNaN(date.getTime()) ? value : date.toLocaleString('es-CO', { dateStyle:'medium', timeStyle:'short' }); };
+    function renderSensors(data) {
+      if (!data) { $('empty').classList.add('visible'); $('garden-status').textContent = 'Esperando sensores'; $('garden-copy').textContent = 'Conecta el Micro:bit y ejecuta el puente para comenzar.'; return; }
+      $('empty').classList.remove('visible');
+      $('humidity').textContent = data.humidity; $('temperature').textContent = `${data.temperature} °C`; $('light').textContent = data.light;
+      [$('humidity'),$('temperature'),$('light')].forEach((node) => node.classList.remove('skeleton'));
+      $('last-read').textContent = formatDate(data.updated_at);
+      const attention = data.temperature < 12 || data.temperature > 32 || data.humidity < 350 || data.humidity > 850;
+      $('garden-status').textContent = attention ? 'Necesita un poco de atención' : 'Tu huerto está equilibrado';
+      $('garden-copy').textContent = attention ? 'Hay una lectura que conviene revisar en los próximos minutos.' : 'Las condiciones registradas están dentro de un rango tranquilo.';
+    }
+    async function loadSensors() { $('refresh').disabled = true; setConnection(false, 'Actualizando…'); try { const response = await fetch('/api/sensors'); const payload = await response.json(); renderSensors(payload.data); setConnection(payload.data !== null, payload.data ? 'Firebase conectado' : 'Sin lecturas'); } catch (error) { setConnection(false, 'Sin conexión'); $('empty').textContent = 'No pudimos conectar con el backend. Revisa que el servicio esté activo e inténtalo de nuevo.'; $('empty').classList.add('visible'); } finally { $('refresh').disabled = false; } }
+    async function analyze() { $('analyze').disabled = true; $('advice').textContent = 'Analizando tus lecturas…'; try { const response = await fetch('/analizar'); const payload = await response.json(); if (!response.ok) throw new Error(payload.error || 'No hay datos'); setAdvice(payload.consejo, payload.source); } catch (error) { setAdvice('Aún no hay suficientes datos para preparar un consejo. Conecta el Micro:bit y vuelve a intentarlo.', 'rules'); } finally { $('analyze').disabled = false; } }
+    $('refresh').addEventListener('click', loadSensors); $('analyze').addEventListener('click', analyze); loadSensors();
+  </script>
+</body>
+</html>

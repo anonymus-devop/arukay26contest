@@ -1,37 +1,37 @@
-# ?? GuÌa de InstalaciÛn: Huerto AI
+# Gu√≠a de instalaci√≥n de Huerto AI
 
-Este proyecto conecta un Micro:bit con una App de React Native usando Firebase como puente.
+## Firebase
 
-## ?? Requisitos
-- Node.js y Expo CLI
-- Python 3.x
-- Micro:bit v1 o v2
-- Cuenta de Google (para Firebase)
+1. Activa Realtime Database en tu proyecto Firebase.
+2. Copia la URL en `FIREBASE_DB_URL`.
+3. Genera una clave privada de cuenta de servicio.
+4. Para Flask/Render, guarda su contenido completo en `FIREBASE_SERVICE_ACCOUNT_JSON`.
+5. Para el puente local, guarda el archivo como `servicio-firebase.json` o configura `FIREBASE_SERVICE_ACCOUNT_FILE`.
 
-## ??? Paso a Paso
+La ruta utilizada por el sistema es `/sensors`.
 
-### 1. Firebase (La Nube)
-1. Crea un proyecto en [Firebase Console](https://console.firebase.google.com/).
-2. Crea una **Realtime Database** en modo prueba (Test Mode).
-3. En **ConfiguraciÛn del Proyecto** $\rightarrow$ **General**, aÒade una "Web App" y copia el irebaseConfig en App.js.
-4. En **ConfiguraciÛn del Proyecto** $\rightarrow$ **Cuentas de Servicio**, genera una nueva clave privada (archivo .json). RenÛmbralo a servicio-firebase.json y ponlo en la carpeta del proyecto.
+## Micro:bit y puente
 
-### 2. Micro:bit (El Hardware)
-1. Abre [MakeCode Micro:bit](https://makecode.microbit.org/).
-2. Cambia la vista de Bloques a **JavaScript**.
-3. Pega el contenido de microbit_code.txt.
-4. Descarga el cÛdigo al Micro:bit.
+Carga `microbit_code.txt` desde MakeCode. Debe emitir una l√≠nea CSV con humedad, temperatura y luz cada pocos segundos. Instala dependencias y ejecuta:
 
-### 3. El Puente (Python)
-1. Instala las dependencias: pip install pyserial firebase-admin.
-2. Abre ridge.py y pon tu DATABASE_URL y el puerto COM correcto.
-3. Ejecuta: python bridge.py.
+```bash
+pip install -r requirements.txt
+python bridge.py
+```
 
-### 4. La App (Frontend)
-1. Instala dependencias: 
-pm install.
-2. Ejecuta: 
-px expo start -c.
+Configura `SERIAL_PORT` si el Micro:bit no est√° en `COM3`. El puente ignora l√≠neas inv√°lidas y contin√∫a escuchando.
 
-## ?? Flujo de Datos
-Micro:bit $\xrightarrow{Serial}$ Python $\xrightarrow{REST}$ Firebase $\xrightarrow{Realtime}$ App $\xrightarrow{API}$ IA
+## Backend y dashboard
+
+```bash
+python main.py
+```
+
+Abre `http://localhost:5000/` y prueba tambi√©n `/health`, `/api/sensors` y `/analizar`.
+
+## Render
+
+- Build: `pip install -r requirements.txt`
+- Start: `gunicorn main:app`
+
+Variables requeridas: `FIREBASE_SERVICE_ACCOUNT_JSON` y `FIREBASE_DB_URL`. `OPENAI_API_KEY` es opcional porque existe un modo local de respaldo.
