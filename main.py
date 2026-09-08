@@ -206,7 +206,7 @@ def generate_advice(sensor_data, provider=None, user_api_key=None):
 
 
 def cs_id_redirect_uri():
-    return os.getenv("CS_ID_REDIRECT_URI") or url_for("oauth_callback", _external=True)
+    return (os.getenv("CS_ID_REDIRECT_URI") or url_for("oauth_callback", _external=True)).strip()
 
 
 def fetch_json(url, request_data=None, headers=None):
@@ -222,7 +222,7 @@ def fetch_json(url, request_data=None, headers=None):
 
 @app.route("/login", methods=["GET"])
 def login():
-    client_id = os.getenv("CS_ID_CLIENT_ID")
+    client_id = (os.getenv("CS_ID_CLIENT_ID") or "").strip()
     if not client_id:
         return jsonify({
             "status": "error",
@@ -266,14 +266,14 @@ def oauth_callback():
 
     form_values = {
         "grant_type": "authorization_code",
-        "client_id": os.getenv("CS_ID_CLIENT_ID", ""),
+        "client_id": (os.getenv("CS_ID_CLIENT_ID") or "").strip(),
         "code": code,
         "redirect_uri": cs_id_redirect_uri(),
         "code_verifier": code_verifier,
     }
     # Confidential clients may optionally provide a secret; public clients use PKCE only.
     if os.getenv("CS_ID_CLIENT_SECRET"):
-        form_values["client_secret"] = os.getenv("CS_ID_CLIENT_SECRET")
+        form_values["client_secret"] = os.getenv("CS_ID_CLIENT_SECRET").strip()
     form = urllib.parse.urlencode(form_values).encode("utf-8")
     try:
         token_data = fetch_json(
