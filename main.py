@@ -233,11 +233,15 @@ def receive_sensors():
     return jsonify({"status": "success", "data": sensor_data}), 201
 
 
-@app.route("/analizar", methods=["GET"])
+@app.route("/analizar", methods=["GET", "POST"])
 def analizar_huerto():
-    sensor_data, error = read_sensors()
+    if request.method == "POST":
+        sensor_data = normalize_sensor_data(request.get_json(silent=True))
+        error = None if sensor_data else "invalid_sensor_data"
+    else:
+        sensor_data, error = read_sensors()
     if sensor_data is None:
-        status_code = 503 if error == "firebase_unavailable" else 404
+        status_code = 400 if error == "invalid_sensor_data" else (503 if error == "firebase_unavailable" else 404)
         return jsonify({"status": "no_data", "error": error}), status_code
     provider = request.headers.get("X-AI-Provider") or request.args.get("provider")
     if (provider or "").lower() == "gemini":

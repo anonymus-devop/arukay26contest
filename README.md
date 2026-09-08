@@ -60,6 +60,8 @@ En el dashboard el usuario puede seleccionar ChatGPT/OpenAI o Google Gemini y pe
 
 El dashboard también ofrece Web Serial. En Chrome o Edge de escritorio pulsa “Conectar Micro:bit”, selecciona el puerto USB e introduce el mismo `DEVICE_INGEST_TOKEN` configurado en Render. `bridge.py` permanece disponible para ejecución automática/local.
 
+Para visitantes sin hardware hay un mini simulador de Micro:bit en la página. Sus lecturas se envían a `/analizar` solo para probar la interfaz y el consejo AI; no modifican Firebase.
+
 ## Render
 
 Usa `gunicorn main:app` como comando de inicio y configura `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_DB_URL` y, si se desea IA generativa, `OPENAI_API_KEY`. Nunca subas credenciales al repositorio.
