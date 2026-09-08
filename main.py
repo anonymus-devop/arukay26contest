@@ -1,5 +1,6 @@
 import json
 import os
+import hmac
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -7,7 +8,7 @@ from datetime import datetime, timezone
 
 import firebase_admin
 from firebase_admin import credentials, db
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
 from openai import OpenAI
 
@@ -210,6 +211,26 @@ def sensors():
     if sensor_data is None:
         return jsonify({"status": "no_data", "data": None, "error": error}), 200
     return jsonify({"status": "success", "data": sensor_data}), 200
+
+
+@app.route("/api/sensors", methods=["POST"])
+def receive_sensors():
+    configured_token = os.getenv("DEVICE_INGEST_TOKEN")
+    supplied_token = request.headers.get("X-Device-Token", "")
+    if not configured_token or not hmac.compare_digest(supplied_token, configured_token):
+        return jsonify({"status": "error", "error": "device_unauthorized"}), 401
+
+    sensor_data = normalize_sensor_data(request.get_json(silent=True))
+    if sensor_data is None:
+        return jsonify({"status": "error", "error": "invalid_sensor_data"}), 400
+    if not init_firebase():
+        return jsonify({"status": "error", "error": "firebase_unavailable"}), 503
+    try:
+        db.reference("/sensors").set(sensor_data)
+    except Exception as error:
+        print(f"Firebase: error guardando sensores Web Serial: {error}")
+        return jsonify({"status": "error", "error": "firebase_write_error"}), 503
+    return jsonify({"status": "success", "data": sensor_data}), 201
 
 
 @app.route("/analizar", methods=["GET"])

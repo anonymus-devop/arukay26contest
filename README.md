@@ -30,6 +30,7 @@ Variables disponibles:
 - `GEMINI_API_KEY`: opcional; permite usar Gemini como proveedor predeterminado cuando no hay clave de OpenAI.
 - `OPENAI_MODEL`: opcional, por defecto `gpt-4o-mini`.
 - `GEMINI_MODEL`: opcional, por defecto `gemini-2.0-flash`.
+- `DEVICE_INGEST_TOKEN`: requerido para Web Serial; token compartido entre el dashboard y el dispositivo.
 - `SERIAL_PORT`: puerto del Micro:bit, por defecto `COM3`.
 
 ## Formato del Micro:bit
@@ -56,6 +57,8 @@ Firebase guarda:
 Si OpenAI no está configurado o falla, `/analizar` devuelve un consejo local basado en umbrales.
 
 En el dashboard el usuario puede seleccionar ChatGPT/OpenAI o Google Gemini y pegar una API key para esa solicitud. La clave se envía en un header HTTPS, no se guarda en Firebase, no se escribe en logs y no se persiste en el servidor.
+
+El dashboard también ofrece Web Serial. En Chrome o Edge de escritorio pulsa “Conectar Micro:bit”, selecciona el puerto USB e introduce el mismo `DEVICE_INGEST_TOKEN` configurado en Render. `bridge.py` permanece disponible para ejecución automática/local.
 
 ## Render
 

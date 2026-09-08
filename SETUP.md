@@ -34,4 +34,10 @@ Abre `http://localhost:5000/` y prueba también `/health`, `/api/sensors` y `/an
 - Build: `pip install -r requirements.txt`
 - Start: `gunicorn main:app`
 
-Variables requeridas: `FIREBASE_SERVICE_ACCOUNT_JSON` y `FIREBASE_DB_URL`. `OPENAI_API_KEY` y `GEMINI_API_KEY` son opcionales porque el usuario también puede proporcionar una clave desde el dashboard. Las claves introducidas en la interfaz solo se usan para la solicitud actual y no se almacenan.
+Variables requeridas: `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_DB_URL` y `DEVICE_INGEST_TOKEN`. `OPENAI_API_KEY` y `GEMINI_API_KEY` son opcionales porque el usuario también puede proporcionar una clave desde el dashboard. Las claves introducidas en la interfaz solo se usan para la solicitud actual y no se almacenan.
+
+## Web Serial
+
+En Chrome o Edge de escritorio, abre la URL HTTPS de Render, introduce `DEVICE_INGEST_TOKEN` en el campo del dashboard y pulsa “Conectar Micro:bit”. Selecciona el puerto USB del Micro:bit. El navegador leerá el CSV y enviará las lecturas a Firebase a través de Flask.
+
+Web Serial necesita una acción explícita del usuario y no está disponible de forma universal en celulares. Si no se desea mantener el navegador abierto, usa `bridge.py` en el computador conectado al Micro:bit.
