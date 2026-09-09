@@ -244,6 +244,14 @@ def gemini_live_token(api_key=None):
     return token
 
 
+def upstream_error_detail(error):
+    try:
+        detail = error.read().decode("utf-8", errors="replace")
+    except Exception:
+        detail = str(error)
+    return detail[:800]
+
+
 def generate_advice(sensor_data, provider=None, user_api_key=None):
     provider = (provider or "").lower().strip()
     if provider not in {"openai", "gemini"}:
@@ -295,9 +303,13 @@ def live_openai_call():
         return jsonify({"error": "missing_sdp"}), 400
     try:
         answer_sdp = openai_live_call(sdp, request.headers.get("X-OpenAI-Key"))
-    except (urllib.error.HTTPError, urllib.error.URLError, RuntimeError, ValueError) as error:
+    except urllib.error.HTTPError as error:
+        detail = upstream_error_detail(error)
+        print(f"OpenAI Live HTTP {error.code}: {detail}")
+        return jsonify({"error": "openai_live_unavailable", "detail": detail}), 503
+    except (urllib.error.URLError, RuntimeError, ValueError) as error:
         print(f"OpenAI Live: {error}")
-        return jsonify({"error": "openai_live_unavailable"}), 503
+        return jsonify({"error": "openai_live_unavailable", "detail": str(error)}), 503
     return jsonify({"sdp": answer_sdp}), 200
 
 
@@ -305,9 +317,13 @@ def live_openai_call():
 def live_gemini_token():
     try:
         token = gemini_live_token(request.headers.get("X-Gemini-Key"))
-    except (urllib.error.HTTPError, urllib.error.URLError, RuntimeError, ValueError) as error:
+    except urllib.error.HTTPError as error:
+        detail = upstream_error_detail(error)
+        print(f"Gemini Live HTTP {error.code}: {detail}")
+        return jsonify({"error": "gemini_live_unavailable", "detail": detail}), 503
+    except (urllib.error.URLError, RuntimeError, ValueError) as error:
         print(f"Gemini Live: {error}")
-        return jsonify({"error": "gemini_live_unavailable"}), 503
+        return jsonify({"error": "gemini_live_unavailable", "detail": str(error)}), 503
     return jsonify({"token": token, "model": GEMINI_LIVE_MODEL}), 200
 
 
