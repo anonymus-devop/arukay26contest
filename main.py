@@ -180,35 +180,18 @@ def openai_live_call(sdp, api_key=None):
     api_key = api_key or os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY no está configurada")
-    payload = {
-        "sdp": sdp,
-        "session": {
-            "type": "realtime",
-            "model": OPENAI_REALTIME_MODEL,
-            "output_modalities": ["audio"],
-            "instructions": live_system_instruction(),
-        },
-    }
-    body = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
         "https://api.openai.com/v1/realtime/calls",
-        data=body,
+        data=sdp.encode("utf-8"),
         headers={
             "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
+            "Content-Type": "application/sdp",
         },
         method="POST",
     )
     with urllib.request.urlopen(req, timeout=30) as response:
-        content_type = response.headers.get("Content-Type", "")
         answer = response.read().decode("utf-8")
-    if "application/sdp" in content_type:
-        return answer
-    try:
-        parsed = json.loads(answer)
-        return parsed.get("sdp") or answer
-    except json.JSONDecodeError:
-        return answer
+    return answer
 
 
 def gemini_live_token(api_key=None):
@@ -310,7 +293,7 @@ def live_openai_call():
     except (urllib.error.URLError, RuntimeError, ValueError) as error:
         print(f"OpenAI Live: {error}")
         return jsonify({"error": "openai_live_unavailable", "detail": str(error)}), 503
-    return jsonify({"sdp": answer_sdp}), 200
+    return jsonify({"sdp": answer_sdp, "model": OPENAI_REALTIME_MODEL}), 200
 
 
 @app.route("/api/live/gemini-token", methods=["POST"])
