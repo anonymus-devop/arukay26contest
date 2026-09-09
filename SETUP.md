@@ -36,17 +36,6 @@ Abre `http://localhost:5000/` y prueba también `/health`, `/api/sensors` y `/an
 
 Variables requeridas: `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_DB_URL` y `DEVICE_INGEST_TOKEN`. `OPENAI_API_KEY` y `GEMINI_API_KEY` son opcionales porque el usuario también puede proporcionar una clave desde el dashboard. Las claves introducidas en la interfaz solo se usan para la solicitud actual y no se almacenan.
 
-## Coki Studios ID OAuth 2.1 / OIDC
-
-Configura en Render:
-
-- `CS_ID_CLIENT_ID`
-- `CS_ID_CLIENT_SECRET` (opcional; no lo uses si Coki Studios ID creó un cliente público)
-- `CS_ID_REDIRECT_URI=https://arukay26contest.onrender.com/callback`
-- `FLASK_SECRET_KEY` (secreto aleatorio largo)
-
-GAIrden usa el authorization endpoint, token endpoint y metadata OIDC oficiales de Coki Studios ID. Para tu cliente público utiliza OAuth 2.1 con PKCE (`S256`), por lo que no necesitas `client_secret`. Registra exactamente la URL `/callback` como redirect URI permitida en Coki Studios ID.
-
 ## Web Serial
 
 En Chrome o Edge de escritorio, abre la URL HTTPS de Render, introduce `DEVICE_INGEST_TOKEN` en el campo del dashboard y pulsa “Conectar Micro:bit”. Selecciona el puerto USB del Micro:bit. El navegador leerá el CSV y enviará las lecturas a Firebase a través de Flask.
