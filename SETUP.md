@@ -42,6 +42,12 @@ En Chrome o Edge de escritorio, abre la URL HTTPS de Render, introduce `DEVICE_I
 
 Web Serial necesita una acción explícita del usuario y no está disponible de forma universal en celulares. Si no se desea mantener el navegador abierto, usa `bridge.py` en el computador conectado al Micro:bit.
 
+## Análisis Live
+
+El campo `Datos reales o simulados` acepta `512,24,140` o un JSON con `humidity`, `temperature` y `light`. Las lecturas del Micro:bit y del simulador se copian ahí automáticamente.
+
+Configura en Render `OPENAI_API_KEY` y/o `GEMINI_API_KEY` para habilitar el botón `Hablar con la IA`. También puedes dejar que cada visitante escriba su propia clave en el campo de IA: se usa únicamente para crear esa sesión y se descarta al terminar la petición. OpenAI Realtime usa WebRTC con micrófono/altavoz y Gemini Live usa WebSocket con audio PCM de 16 kHz; el backend entrega la señalización o un token efímero. Los modelos se pueden cambiar con `OPENAI_REALTIME_MODEL` y `GEMINI_LIVE_MODEL`.
+
 ## Simulador público
 
 El panel “Simula tu Micro:bit” permite probar humedad, temperatura y luz sin token ni dispositivo físico. La lectura simulada solo se procesa para la demostración y no se guarda en Firebase.

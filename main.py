@@ -4,7 +4,7 @@ import hmac
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import firebase_admin
 from firebase_admin import credentials, db
@@ -19,6 +19,8 @@ FIREBASE_DB_URL = os.getenv(
     "FIREBASE_DB_URL", "https://arukaycontest26-default-rtdb.firebaseio.com"
 )
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+OPENAI_REALTIME_MODEL = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime")
+GEMINI_LIVE_MODEL = os.getenv("GEMINI_LIVE_MODEL", "gemini-3.1-flash-live-preview")
 firebase_initialized = False
 
 
@@ -165,6 +167,83 @@ def gemini_advice(sensor_data, api_key):
     return result["candidates"][0]["content"]["parts"][0]["text"]
 
 
+def live_system_instruction():
+    return (
+        "Eres GAIrden AI, un asistente de huerto escolar. Responde en español, de forma breve, "
+        "cálida y accionable. La humedad es una lectura analógica Micro:bit de 0 a 1023; "
+        "la temperatura está en grados Celsius y la luz es el nivel del sensor Micro:bit."
+    )
+
+
+def openai_live_call(sdp, api_key=None):
+    """Relay the WebRTC SDP offer to OpenAI without exposing the server API key."""
+    api_key = api_key or os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY no está configurada")
+    payload = {
+        "sdp": sdp,
+        "session": {
+            "type": "realtime",
+            "model": OPENAI_REALTIME_MODEL,
+            "output_modalities": ["audio"],
+            "instructions": live_system_instruction(),
+        },
+    }
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.openai.com/v1/realtime/calls",
+        data=body,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=30) as response:
+        content_type = response.headers.get("Content-Type", "")
+        answer = response.read().decode("utf-8")
+    if "application/sdp" in content_type:
+        return answer
+    try:
+        parsed = json.loads(answer)
+        return parsed.get("sdp") or answer
+    except json.JSONDecodeError:
+        return answer
+
+
+def gemini_live_token(api_key=None):
+    """Mint a short-lived Gemini Live token for the browser WebSocket."""
+    api_key = api_key or os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY no está configurada")
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    payload = {
+        "uses": 1,
+        "expireTime": (now + timedelta(minutes=30)).isoformat().replace("+00:00", "Z"),
+        "newSessionExpireTime": (now + timedelta(minutes=1)).isoformat().replace("+00:00", "Z"),
+        "liveConnectConstraints": {
+            "model": f"models/{GEMINI_LIVE_MODEL}",
+            "config": {
+                "responseModalities": ["TEXT"],
+                "systemInstruction": {"parts": [{"text": live_system_instruction()}]},
+            },
+        },
+    }
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        "https://generativelanguage.googleapis.com/v1beta/auth_tokens",
+        data=body,
+        headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=30) as response:
+        result = json.loads(response.read().decode("utf-8"))
+    token = result.get("name")
+    if not token:
+        raise ValueError("Gemini no devolvió un token efímero")
+    return token
+
+
 def generate_advice(sensor_data, provider=None, user_api_key=None):
     provider = (provider or "").lower().strip()
     if provider not in {"openai", "gemini"}:
@@ -202,7 +281,34 @@ def health():
         "message": "GAIrden AI activo" if firebase_ok else "Firebase requiere configuración",
         "firebase_initialized": firebase_ok,
         "openai_configured": bool(os.getenv("OPENAI_API_KEY")),
+        "openai_realtime_configured": bool(os.getenv("OPENAI_API_KEY")),
+        "gemini_configured": bool(os.getenv("GEMINI_API_KEY")),
+        "gemini_live_configured": bool(os.getenv("GEMINI_API_KEY")),
     }), 200
+
+
+@app.route("/api/live/openai-call", methods=["POST"])
+def live_openai_call():
+    payload = request.get_json(silent=True) or {}
+    sdp = payload.get("sdp")
+    if not isinstance(sdp, str) or not sdp.strip():
+        return jsonify({"error": "missing_sdp"}), 400
+    try:
+        answer_sdp = openai_live_call(sdp, request.headers.get("X-OpenAI-Key"))
+    except (urllib.error.HTTPError, urllib.error.URLError, RuntimeError, ValueError) as error:
+        print(f"OpenAI Live: {error}")
+        return jsonify({"error": "openai_live_unavailable"}), 503
+    return jsonify({"sdp": answer_sdp}), 200
+
+
+@app.route("/api/live/gemini-token", methods=["POST"])
+def live_gemini_token():
+    try:
+        token = gemini_live_token(request.headers.get("X-Gemini-Key"))
+    except (urllib.error.HTTPError, urllib.error.URLError, RuntimeError, ValueError) as error:
+        print(f"Gemini Live: {error}")
+        return jsonify({"error": "gemini_live_unavailable"}), 503
+    return jsonify({"token": token, "model": GEMINI_LIVE_MODEL}), 200
 
 
 @app.route("/api/sensors", methods=["GET"])

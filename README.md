@@ -29,7 +29,9 @@ Variables disponibles:
 - `OPENAI_API_KEY`: opcional; sin ella se usa un consejo local por reglas.
 - `GEMINI_API_KEY`: opcional; permite usar Gemini como proveedor predeterminado cuando no hay clave de OpenAI.
 - `OPENAI_MODEL`: opcional, por defecto `gpt-4o-mini`.
+- `OPENAI_REALTIME_MODEL`: opcional, por defecto `gpt-realtime`; se usa para el análisis Live por WebRTC.
 - `GEMINI_MODEL`: opcional, por defecto `gemini-2.0-flash`.
+- `GEMINI_LIVE_MODEL`: opcional, por defecto `gemini-3.1-flash-live-preview`; se usa para Gemini Live por WebSocket.
 - `DEVICE_INGEST_TOKEN`: requerido para Web Serial; token compartido entre el dashboard y el dispositivo.
 - `SERIAL_PORT`: puerto del Micro:bit, por defecto `COM3`.
 
@@ -59,6 +61,8 @@ Si OpenAI no está configurado o falla, `/analizar` devuelve un consejo local ba
 En el dashboard el usuario puede seleccionar ChatGPT/OpenAI o Google Gemini y pegar una API key para esa solicitud. La clave se envía en un header HTTPS, no se guarda en Firebase, no se escribe en logs y no se persiste en el servidor.
 
 El dashboard también ofrece Web Serial. En Chrome o Edge de escritorio pulsa “Conectar Micro:bit”, selecciona el puerto USB e introduce el mismo `DEVICE_INGEST_TOKEN` configurado en Render. `bridge.py` permanece disponible para ejecución automática/local.
+
+El campo “Datos reales o simulados” acepta `humedad,temperatura,luz` (por ejemplo `512,24,140`) o un JSON con `humidity`, `temperature` y `light`. Las lecturas recibidas por Web Serial y el simulador se copian automáticamente al campo. “Hablar con la IA” abre una sesión de voz OpenAI Realtime por WebRTC o Gemini Live por WebSocket según el proveedor. El visitante puede pegar su propia API key: se envía únicamente al backend para crear la sesión, no se guarda ni se escribe en logs. Si no se pega una clave, se usa la de Render si existe; si el Live no está disponible, el análisis clásico y el consejo por reglas siguen funcionando.
 
 Para visitantes sin hardware hay un mini simulador de Micro:bit en la página. Sus lecturas se envían a `/analizar` solo para probar la interfaz y el consejo AI; no modifican Firebase.
 
