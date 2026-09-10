@@ -214,7 +214,7 @@ def gemini_live_token(api_key=None):
     }
     body = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
-        "https://generativelanguage.googleapis.com/v1beta/auth_tokens",
+        "https://generativelanguage.googleapis.com/v1alpha/auth_tokens",
         data=body,
         headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
         method="POST",

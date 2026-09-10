@@ -1,0 +1,190 @@
+entities:
+  com.meta.models.Scene:
+  - components:
+      com.meta.components.Name: {}
+      com.meta.components.Scene:
+        nodes:
+        - ref:GAIrden_Suelo
+        - ref:Bancal_Humedad
+        - ref:Bancal_Temperatura
+        - ref:Bancal_Luz
+        - ref:Panel_Humedad
+        - ref:Panel_Temperatura
+        - ref:Panel_Luz
+        - ref:Panel_Consejo_GAIrden
+    tag: Scene
+  com.meta.models.SceneNode:
+  - components:
+      com.meta.components.Animatable: {}
+      com.meta.components.DocumentReference:
+        transformType: None
+        documentReference: projref:GAIrden_Suelo/Main.metaspatialobj
+      com.meta.components.Name:
+        name: GAIrden_Suelo
+      com.meta.components.PointerNodeInverseComponent: {}
+      com.meta.components.SceneNode:
+        rotation.format: Euler
+        scale:
+        - 7.5
+        - 0.5
+        - 7.5
+        translation:
+        - 0
+        - -0.20000000298023224
+        - 0
+        componentVersion: 1
+      com.meta.components.Visibility:
+        visible: true
+    tag: GAIrden_Suelo
+  - components:
+      com.meta.components.Animatable: {}
+      com.meta.components.DocumentReference:
+        transformType: None
+        documentReference: projref:Bancal_Humedad/Main.metaspatialobj
+      com.meta.components.Name:
+        name: Bancal_Humedad
+      com.meta.components.PointerNodeInverseComponent: {}
+      com.meta.components.SceneNode:
+        rotation.format: Euler
+        scale:
+        - 2.2000000476837158
+        - 0.60000002384185791
+        - 2.2000000476837158
+        translation:
+        - -1.2000000476837158
+        - 0.05000000074505806
+        - 0
+        componentVersion: 1
+      com.meta.components.Visibility:
+        visible: true
+    tag: Bancal_Humedad
+  - components:
+      com.meta.components.Animatable: {}
+      com.meta.components.DocumentReference:
+        transformType: None
+        documentReference: projref:Bancal_Temperatura/Main.metaspatialobj
+      com.meta.components.Name:
+        name: Bancal_Temperatura
+      com.meta.components.PointerNodeInverseComponent: {}
+      com.meta.components.SceneNode:
+        rotation.format: Euler
+        scale:
+        - 2.2000000476837158
+        - 0.60000002384185791
+        - 2.2000000476837158
+        translation:
+        - 0
+        - 0.05000000074505806
+        - 0
+        componentVersion: 1
+      com.meta.components.Visibility:
+        visible: true
+    tag: Bancal_Temperatura
+  - components:
+      com.meta.components.Animatable: {}
+      com.meta.components.DocumentReference:
+        transformType: None
+        documentReference: projref:Bancal_Luz/Main.metaspatialobj
+      com.meta.components.Name:
+        name: Bancal_Luz
+      com.meta.components.PointerNodeInverseComponent: {}
+      com.meta.components.SceneNode:
+        rotation.format: Euler
+        scale:
+        - 2.2000000476837158
+        - 0.60000002384185791
+        - 2.2000000476837158
+        translation:
+        - 1.2000000476837158
+        - 0.05000000074505806
+        - 0
+        componentVersion: 1
+      com.meta.components.Visibility:
+        visible: true
+    tag: Bancal_Luz
+  - components:
+      com.meta.components.Animatable: {}
+      com.meta.components.Name:
+        name: Panel_Humedad
+      com.meta.components.PointerNodeInverseComponent: {}
+      com.meta.components.SceneNode:
+        rotation.format: Euler
+        scale:
+        - 1
+        - 1
+        - 1
+        translation:
+        - -2
+        - 1.7999999523162842
+        - -1.7999999523162842
+        componentVersion: 1
+      com.meta.components.Visibility:
+        visible: true
+      com.meta.spatial.toolkit.Panel: {}
+      com.meta.spatial.toolkit.PanelDimensions: {}
+    tag: Panel_Humedad
+  - components:
+      com.meta.components.Animatable: {}
+      com.meta.components.Name:
+        name: Panel_Temperatura
+      com.meta.components.PointerNodeInverseComponent: {}
+      com.meta.components.SceneNode:
+        rotation.format: Euler
+        scale:
+        - 1
+        - 1
+        - 1
+        translation:
+        - 0
+        - 1.7999999523162842
+        - -1.7999999523162842
+        componentVersion: 1
+      com.meta.components.Visibility:
+        visible: true
+      com.meta.spatial.toolkit.Panel: {}
+      com.meta.spatial.toolkit.PanelDimensions: {}
+    tag: Panel_Temperatura
+  - components:
+      com.meta.components.Animatable: {}
+      com.meta.components.Name:
+        name: Panel_Luz
+      com.meta.components.PointerNodeInverseComponent: {}
+      com.meta.components.SceneNode:
+        rotation.format: Euler
+        scale:
+        - 1
+        - 1
+        - 1
+        translation:
+        - 2
+        - 1.7999999523162842
+        - -1.7999999523162842
+        componentVersion: 1
+      com.meta.components.Visibility:
+        visible: true
+      com.meta.spatial.toolkit.Panel: {}
+      com.meta.spatial.toolkit.PanelDimensions: {}
+    tag: Panel_Luz
+  - components:
+      com.meta.components.Animatable: {}
+      com.meta.components.Name:
+        name: Panel_Consejo_GAIrden
+      com.meta.components.PointerNodeInverseComponent: {}
+      com.meta.components.SceneNode:
+        rotation.format: Euler
+        scale:
+        - 1
+        - 1
+        - 1
+        translation:
+        - 0
+        - 2.7000000476837158
+        - -1.3999999761581421
+        componentVersion: 1
+      com.meta.components.Visibility:
+        visible: true
+      com.meta.spatial.toolkit.Panel: {}
+      com.meta.spatial.toolkit.PanelDimensions: {}
+    tag: Panel_Consejo_GAIrden
+metadata:
+  version: 1.35

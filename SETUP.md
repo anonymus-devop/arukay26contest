@@ -29,6 +29,12 @@ python main.py
 
 Abre `http://localhost:5000/` y prueba también `/health`, `/api/sensors` y `/analizar`.
 
+## App Android / XR
+
+El cliente React Native está en `App.js`. Ejecuta `npx expo start` para desarrollo o `npx expo run:android` para compilar una app Android. Para apuntar a otra instalación de Flask define `EXPO_PUBLIC_API_URL`, por ejemplo `https://arukay26contest.onrender.com`.
+
+Android XR y Meta Horizon OS pueden ejecutar la app como superficie Android 2D. La conexión USB directa a Micro:bit no se incluye porque Web Serial es una API de navegador; usa `bridge.py` en un computador para enviar las lecturas a Flask. La interfaz inmersiva OpenXR sería una fase posterior.
+
 ## Render
 
 - Build: `pip install -r requirements.txt`
