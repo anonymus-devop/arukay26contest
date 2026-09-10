@@ -1,0 +1,13 @@
+{
+  "name": "gairden",
+  "version": "1.0.0",
+  "description": "Asistente y monitor para el huerto escolar inteligente GAIrden (Micro:bit, Firebase y análisis con IA).",
+  "author": "GAIrden Team",
+  "mcpServers": {
+    "gairden-sensors": {
+      "type": "sse",
+      "url": "https://arukay26contest.onrender.com/mcp/sse"
+    }
+  },
+  "skills": ["skills/gairden-assistant"]
+}

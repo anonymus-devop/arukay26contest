@@ -1,0 +1,15 @@
+{
+  "name": "gairden-marketplace",
+  "plugins": [
+    {
+      "name": "gairden",
+      "description": "Monitorea sensores de humedad, temperatura y luz del huerto inteligente GAIrden y ofrece diagnósticos agronómicos con IA.",
+      "version": "1.0.0",
+      "author": "GAIrden Team",
+      "source": {
+        "type": "local",
+        "path": "./plugins/gairden"
+      }
+    }
+  ]
+}
