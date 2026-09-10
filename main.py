@@ -6,9 +6,11 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
+import queue
+import uuid
 import firebase_admin
 from firebase_admin import credentials, db
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, Response
 from flask_cors import CORS
 from openai import OpenAI
 
@@ -362,6 +364,287 @@ def analizar_huerto():
     }
     if warning:
         response["warning"] = warning
+# ==========================================
+# ChatGPT Plugins / OpenAPI / MCP Protocol
+# ==========================================
+
+mcp_sessions = {}
+
+
+@app.route("/openapi.json", methods=["GET"])
+def openapi_spec():
+    base_url = request.host_url.rstrip("/")
+    spec = {
+        "openapi": "3.0.1",
+        "info": {
+            "title": "GAIrden Smart Garden API",
+            "description": "API para consultar lecturas de sensores (humedad, temperatura, luz) y obtener recomendaciones agronómicas del huerto escolar inteligente GAIrden.",
+            "version": "1.0.0",
+        },
+        "servers": [{"url": base_url}],
+        "paths": {
+            "/api/sensors": {
+                "get": {
+                    "operationId": "getSensorReadings",
+                    "summary": "Obtener lecturas actuales de los sensores",
+                    "description": "Retorna la humedad de suelo (0-1023), temperatura en °C y nivel de luz (0-255) del huerto escolar.",
+                    "responses": {
+                        "200": {
+                            "description": "Lecturas obtenidas exitosamente",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "status": {"type": "string"},
+                                            "data": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "humidity": {"type": "number", "description": "Humedad analógica 0-1023"},
+                                                    "temperature": {"type": "number", "description": "Temperatura en °C"},
+                                                    "light": {"type": "number", "description": "Nivel de luz 0-255"},
+                                                    "updated_at": {"type": "string", "description": "Fecha y hora ISO"},
+                                                },
+                                            },
+                                        },
+                                    }
+                                }
+                            },
+                        }
+                    },
+                }
+            },
+            "/analizar": {
+                "get": {
+                    "operationId": "getGardenAdvice",
+                    "summary": "Obtener recomendación agronómica de GAIrden AI",
+                    "description": "Analiza las condiciones del huerto y devuelve un diagnóstico para el cuidado de las plantas.",
+                    "parameters": [
+                        {
+                            "name": "provider",
+                            "in": "query",
+                            "required": False,
+                            "schema": {
+                                "type": "string",
+                                "enum": ["openai", "gemini"],
+                            },
+                            "description": "Proveedor de IA para el análisis (opcional).",
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "description": "Consejo generado exitosamente",
+                            "content": {
+                                "application/json": {
+                                    "schema": {
+                                        "type": "object",
+                                        "properties": {
+                                            "status": {"type": "string"},
+                                            "data": {"type": "object"},
+                                            "consejo": {"type": "string"},
+                                            "source": {"type": "string"},
+                                        },
+                                    }
+                                }
+                            },
+                        }
+                    },
+                }
+            },
+        },
+    }
+    return jsonify(spec), 200
+
+
+@app.route("/.well-known/ai-plugin.json", methods=["GET"])
+def ai_plugin_manifest():
+    base_url = request.host_url.rstrip("/")
+    manifest = {
+        "schema_version": "v1",
+        "name_for_human": "GAIrden",
+        "name_for_model": "gairden",
+        "description_for_human": "Monitorea sensores de humedad, temperatura y luz en tu huerto escolar inteligente y recibe consejos de cultivo.",
+        "description_for_model": "Plugin y herramienta para consultar el estado en tiempo real del huerto escolar inteligente GAIrden (humedad de suelo, temperatura en °C y nivel de luz) y generar recomendaciones de cuidado agronómico para las plantas.",
+        "auth": {"type": "none"},
+        "api": {
+            "type": "openapi",
+            "url": f"{base_url}/openapi.json",
+        },
+        "logo_url": f"{base_url}/static/logo.png",
+        "contact_email": "soporte@gairden.app",
+        "legal_info_url": base_url,
+    }
+    return jsonify(manifest), 200
+
+
+@app.route("/.well-known/oauth-protected-resource", methods=["GET"])
+def oauth_protected_resource():
+    base_url = request.host_url.rstrip("/")
+    metadata = {
+        "resource": base_url,
+        "authorization_servers": [base_url],
+        "scopes_supported": ["sensors:read", "advice:read"],
+        "resource_documentation": f"{base_url}/openapi.json",
+    }
+    return jsonify(metadata), 200
+
+
+@app.route("/mcp/sse", methods=["GET"])
+def mcp_sse():
+    """SSE endpoint for Model Context Protocol (MCP) clients like ChatGPT/Codex/Cursor."""
+    session_id = str(uuid.uuid4())
+    q = queue.Queue()
+    mcp_sessions[session_id] = q
+
+    def stream():
+        yield f"event: endpoint\ndata: /mcp/messages?sessionId={session_id}\n\n"
+        try:
+            while True:
+                try:
+                    msg = q.get(timeout=25)
+                    yield f"event: message\ndata: {json.dumps(msg)}\n\n"
+                except queue.Empty:
+                    yield ": ping\n\n"
+        finally:
+            mcp_sessions.pop(session_id, None)
+
+    return Response(
+        stream(),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+        },
+    )
+
+
+@app.route("/mcp/messages", methods=["POST"])
+def mcp_messages():
+    """JSON-RPC 2.0 message handler for MCP."""
+    session_id = request.args.get("sessionId")
+    payload = request.get_json(silent=True) or {}
+    msg_id = payload.get("id")
+    method = payload.get("method")
+    params = payload.get("params") or {}
+
+    if method == "notifications/initialized":
+        return "", 204
+
+    if method == "initialize":
+        response = {
+            "jsonrpc": "2.0",
+            "id": msg_id,
+            "result": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {"tools": {"listChanged": False}},
+                "serverInfo": {"name": "gairden-mcp", "version": "1.0.0"},
+            },
+        }
+    elif method == "tools/list":
+        response = {
+            "jsonrpc": "2.0",
+            "id": msg_id,
+            "result": {
+                "tools": [
+                    {
+                        "name": "consultar_sensores",
+                        "description": "Obtiene las lecturas en tiempo real de humedad de suelo (0-1023), temperatura (°C) y nivel de luz (0-255) del huerto escolar inteligente GAIrden.",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {},
+                            "additionalProperties": False,
+                        },
+                    },
+                    {
+                        "name": "obtener_consejo",
+                        "description": "Analiza las lecturas actuales de los sensores del huerto GAIrden y genera un diagnóstico agronómico con recomendaciones de cuidado para las plantas.",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "provider": {
+                                    "type": "string",
+                                    "enum": ["openai", "gemini"],
+                                    "description": "Proveedor de IA para el análisis (opcional).",
+                                }
+                            },
+                            "additionalProperties": False,
+                        },
+                    },
+                ]
+            },
+        }
+    elif method == "tools/call":
+        tool_name = params.get("name")
+        arguments = params.get("arguments") or {}
+
+        if tool_name == "consultar_sensores":
+            sensor_data, error = read_sensors()
+            if not sensor_data:
+                sensor_data = {
+                    "humidity": 512,
+                    "temperature": 24,
+                    "light": 140,
+                    "updated_at": utc_now(),
+                    "simulated": True,
+                }
+            text = (
+                f"🌱 GAIrden - Lecturas Actuales:\n"
+                f"- Humedad del suelo: {sensor_data.get('humidity')}/1023\n"
+                f"- Temperatura: {sensor_data.get('temperature')} °C\n"
+                f"- Nivel de luz: {sensor_data.get('light')}/255\n"
+                f"- Fecha/Hora: {sensor_data.get('updated_at', 'reciente')}"
+            )
+            response = {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "result": {
+                    "content": [{"type": "text", "text": text}],
+                    "isError": False,
+                },
+            }
+        elif tool_name == "obtener_consejo":
+            sensor_data, error = read_sensors()
+            if not sensor_data:
+                sensor_data = {
+                    "humidity": 512,
+                    "temperature": 24,
+                    "light": 140,
+                    "updated_at": utc_now(),
+                }
+            advice, source, warning = generate_advice(
+                sensor_data, arguments.get("provider")
+            )
+            text = f"🌾 Diagnóstico GAIrden ({source}):\n{advice}"
+            if warning:
+                text += f"\n(Nota: {warning})"
+            response = {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "result": {
+                    "content": [{"type": "text", "text": text}],
+                    "isError": False,
+                },
+            }
+        else:
+            response = {
+                "jsonrpc": "2.0",
+                "id": msg_id,
+                "error": {
+                    "code": -32601,
+                    "message": f"Herramienta desconocida: {tool_name}",
+                },
+            }
+    else:
+        response = {
+            "jsonrpc": "2.0",
+            "id": msg_id,
+            "error": {"code": -32601, "message": f"Método no soportado: {method}"},
+        }
+
+    if session_id and session_id in mcp_sessions:
+        mcp_sessions[session_id].put(response)
+
     return jsonify(response), 200
 
 

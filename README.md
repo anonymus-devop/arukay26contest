@@ -220,6 +220,35 @@ Si aparece `Unsupported content type ... application/sdp`, el backend debe envia
 | `GET/POST` | `/analizar` | Genera consejo |
 | `POST` | `/api/live/openai-call` | Crea sesión OpenAI Realtime |
 | `POST` | `/api/live/gemini-token` | Crea token temporal Gemini Live |
+| `GET` | `/openapi.json` | Especificación OpenAPI 3.0 para Custom Actions |
+| `GET` | `/.well-known/ai-plugin.json` | Manifiesto de ChatGPT Plugin |
+| `GET` | `/.well-known/oauth-protected-resource` | Metadatos RFC 9728 para OpenAI Plugins |
+| `GET` | `/mcp/sse` | Endpoint SSE para clientes MCP (ChatGPT, Codex, Cursor) |
+| `POST` | `/mcp/messages` | Endpoint JSON-RPC 2.0 para llamadas MCP (`consultar_sensores`, `obtener_consejo`) |
+
+## Integración con ChatGPT (Plugin / MCP / Custom GPT)
+
+GAIrden puede conectarse directamente a **ChatGPT** mediante dos modalidades:
+
+### 1. Como Custom GPT Action (Fácil y rápido)
+1. En [chatgpt.com/create](https://chatgpt.com/create), ve a la pestaña **Configure**.
+2. Al final, haz clic en **Create new action** (Crear nueva acción).
+3. En el campo *Import from URL*, escribe:
+   `https://TU-SERVICIO.onrender.com/openapi.json`
+   *(o `http://localhost:5000/openapi.json` si usas un túnel local).*
+4. ChatGPT detectará automáticamente las operaciones:
+   - `getSensorReadings`: Lee humedad, temperatura y luz.
+   - `getGardenAdvice`: Obtiene el diagnóstico y recomendaciones agronómicas.
+5. Ahora podrás chatear con tu huerto desde cualquier dispositivo con ChatGPT.
+
+### 2. Como Servidor MCP (Model Context Protocol)
+Compatible con los plugins de ChatGPT, OpenAI Codex y herramientas como Claude Desktop o Cursor:
+- **Transporte SSE:** `GET https://TU-SERVICIO.onrender.com/mcp/sse`
+- **Mensajes:** `POST https://TU-SERVICIO.onrender.com/mcp/messages`
+- **Herramientas incluidas:**
+  - `consultar_sensores`: Devuelve las lecturas en tiempo real de suelo, clima y luz.
+  - `obtener_consejo`: Diagnóstico agronómico de las plantas según condiciones.
+
 
 ## Desplegar en Render
 
